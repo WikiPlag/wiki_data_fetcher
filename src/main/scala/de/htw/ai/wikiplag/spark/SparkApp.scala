@@ -91,6 +91,10 @@ object SparkApp {
       val mongoDBUser = commandLine.getParsedOptionValue("user").asInstanceOf[String]
       val mongoDBPass = commandLine.getParsedOptionValue("password").asInstanceOf[String]
 
+      if (commandLine.hasOption("h")) {
+        new HelpFormatter().printHelp("wiki_data_fetcher.jar", options)
+      }
+
       if (commandLine.hasOption("e")) {
         extractText(
           commandLine.getParsedOptionValue("hadoop_file").asInstanceOf[String],
@@ -106,14 +110,10 @@ object SparkApp {
         return
       }
 
-      if (commandLine.hasOption("h")) {
-        new HelpFormatter().printHelp("wiki_data_fetcher.jar", options)
-      }
-
     } catch {
-      case e: ParseException =>
+      case e: Exception =>
         println("Unexpected exception: " + e.getMessage)
-        e.printStackTrace()
+        new HelpFormatter().printHelp("wiki_data_fetcher.jar", options)
     }
   }
 
@@ -150,7 +150,7 @@ object SparkApp {
 
     val sc = new SparkContext(sparkConf)
     val sqlContext = new SQLContext(sc)
-    val mongoClient = sc.broadcast(MongoDBClient(ngrams))
+    val mongoClient = sc.broadcast(MongoDbClient(ngrams))
 
     val df = sqlContext
       .load("com.databricks.spark.xml", Map("path" -> hadoopFile, "rowTag" -> "page"))

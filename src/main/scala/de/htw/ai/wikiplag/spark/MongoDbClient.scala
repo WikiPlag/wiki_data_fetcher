@@ -33,7 +33,7 @@ class MongoDbClient(
   }
 }
 
-object MongoDBClient {
+object MongoDbClient {
 
   val SERVER_PORT = 27020
   val ServerAddress = "hadoop03.f4.htw-berlin.de"
