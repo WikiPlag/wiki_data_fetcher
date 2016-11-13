@@ -1,6 +1,5 @@
 package de.htw.ai.wikiplag.spark
 
-import com.mongodb.casbah.Imports._
 import de.htw.ai.wikiplag.forwardreferencetable.ForwardReferenceTableImp
 import de.htw.ai.wikiplag.parser.WikiDumpParser
 import de.htw.ai.wikiplag.viewindex.ViewIndexBuilderImp
@@ -13,73 +12,6 @@ import org.apache.spark.sql.SQLContext
   */
 object SparkApp {
 
-  //http://allegro.tech/2015/08/spark-kafka-integration.html
-  class MongoDBClient(
-                       createWikiCollection: () => MongoCollection,
-                       createHashCollections: () => Map[Int, MongoCollection])
-    extends Serializable {
-
-    lazy val mongoCollection = createWikiCollection()
-    lazy val collections = createHashCollections()
-
-    def insertArticle(wikiID: Long,
-                      title: String,
-                      text: String,
-                      viewIndex: List[(Int, Int, Int)]): Unit = {
-
-      mongoCollection.insert(MongoDBObject(
-        ("_id", wikiID),
-        ("title", title),
-        ("text", text),
-        ("viewindex", viewIndex)
-      ))
-    }
-
-    def insertNGramHashes(ngramSize: Int, wikiID: Long, hashes: Map[String, List[Int]]) = {
-      collections.get(ngramSize).get.insert(MongoDBObject(
-        ("_id", wikiID),
-        ("hashes", hashes.map(x => {
-          Map("hash" -> x._1, "occurs" -> x._2)
-        }))
-      ))
-    }
-
-  }
-
-  object MongoDBClient {
-    def apply(ngrams: List[Int]): MongoDBClient = {
-
-      //http://stackoverflow.com/questions/25825058/why-multiple-mongodb-connecions-with-casbah
-      val createWikiCollectionFct = () => {
-        val mongoClient = MongoClient(
-          new ServerAddress("hadoop03.f4.htw-berlin.de", 27020),
-          List(MongoCredential.createCredential("REPLACE-ME", "REPLACE-ME", "REPLACE-ME".toCharArray))
-        )
-
-        sys.addShutdownHook {
-          mongoClient.close()
-        }
-        mongoClient("s0546921")("wiki")
-      }
-
-      val createHashCollectionsFct = () => {
-        val mongoClient = MongoClient(
-          new ServerAddress("hadoop03.f4.htw-berlin.de", 27020),
-          List(MongoCredential.createCredential("REPLACE-ME", "REPLACE-ME", "REPLACE-ME".toCharArray))
-        )
-
-        sys.addShutdownHook {
-          mongoClient.close()
-        }
-
-        ngrams.map(x => {
-          (x, mongoClient("s0546921")("wiki" + x))
-        }).toMap
-      }
-
-      new MongoDBClient(createWikiCollectionFct, createHashCollectionsFct)
-    }
-  }
 
   def createCLIOptions() = {
     val options = new Options()
