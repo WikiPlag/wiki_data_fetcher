@@ -13,7 +13,11 @@ val sparkCoreDep = "org.apache.spark" %% "spark-core" % "1.3.0" % "provided"
 val sparkSQLDep = "org.apache.spark" %% "spark-sql" % "1.3.0" % "provided"
 
 libraryDependencies ++= Seq(
-  mongoDBDriverDep, sparkCoreDep, sparkSQLDep, "com.github.WikiPlag" % "wikiplag_utils" % "-SNAPSHOT"
+  mongoDBDriverDep,
+  sparkCoreDep,
+  sparkSQLDep,
+  "com.github.WikiPlag" % "wikiplag_utils" % "-SNAPSHOT",
+  "commons-cli" % "commons-cli" % "1.3.1"
 )
 
 // assemblyJarName in assembly := "something.jar"

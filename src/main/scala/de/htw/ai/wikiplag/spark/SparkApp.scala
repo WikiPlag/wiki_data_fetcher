@@ -1,15 +1,10 @@
 package de.htw.ai.wikiplag.spark
 
 import com.mongodb.casbah.Imports._
-import com.mongodb.casbah.MongoClient
-import com.mongodb.casbah.MongoClientOptions
-import com.mongodb.ServerAddress
-import com.mongodb.casbah.MongoClient
-import com.mongodb.casbah.MongoClientOptions
-import com.mongodb.ServerAddress
 import de.htw.ai.wikiplag.forwardreferencetable.ForwardReferenceTableImp
 import de.htw.ai.wikiplag.parser.WikiDumpParser
 import de.htw.ai.wikiplag.viewindex.ViewIndexBuilderImp
+import org.apache.commons.cli.{DefaultParser, HelpFormatter, Option, OptionGroup, Options, ParseException}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.SQLContext
 
@@ -58,7 +53,7 @@ object SparkApp {
       val createWikiCollectionFct = () => {
         val mongoClient = MongoClient(
           new ServerAddress("hadoop03.f4.htw-berlin.de", 27020),
-           List(MongoCredential.createCredential("REPLACE-ME", "REPLACE-ME", "REPLACE-ME".toCharArray))
+          List(MongoCredential.createCredential("REPLACE-ME", "REPLACE-ME", "REPLACE-ME".toCharArray))
         )
 
         sys.addShutdownHook {
@@ -86,24 +81,102 @@ object SparkApp {
     }
   }
 
+  def createCLIOptions() = {
+    val options = new Options()
+    options.addOption(Option.builder("h")
+      .longOpt("help")
+      .hasArg(false)
+      .build())
+
+    /* MongoDB Settings */
+
+    options.addOption(Option.builder("m")
+      .longOpt("mongodb_path")
+      .desc("MongoDB Path")
+      .required()
+      .numberOfArgs(1)
+      .`type`(classOf[String])
+      .argName("path")
+      .build())
+
+    options.addOption(Option.builder("u")
+      .longOpt("mongodb_user")
+      .desc("MongoDB User")
+      .required()
+      .numberOfArgs(1)
+      .`type`(classOf[String])
+      .argName("user")
+      .build())
+
+    options.addOption(Option.builder("p")
+      .longOpt("mongodb_password")
+      .desc("MongoDB Password")
+      .required()
+      .numberOfArgs(1)
+      .`type`(classOf[String])
+      .argName("password")
+      .build())
+
+    /* Commands */
+
+    val group = new OptionGroup()
+
+    group.addOption(Option.builder("e")
+      .longOpt("extract")
+      .desc("parse wiki XML file and saves in a db")
+      .numberOfArgs(1)
+      .argName("hadoop_file")
+      .`type`(classOf[String])
+      .build()
+    )
+
+    group.addOption(Option.builder("i")
+      .longOpt("createindex")
+      .desc("use db-entries to create an inverse index and stores it back")
+      .numberOfArgs(0)
+      .build()
+    )
+
+    options.addOptionGroup(group)
+    options
+  }
+
   def main(args: Array[String]) {
+    val options = createCLIOptions()
 
-    args.length match {
-      case 1 =>
-      case _ =>
-        println("Missing Parameters")
-        println("Usage: spark-submit ....  <PATH_TO_XML:URIString>")
-        sys.exit(1)
-    }
+    try {
+      val commandLine = new DefaultParser().parse(options, args)
+      val mongoDBPath = commandLine.getParsedOptionValue("path").asInstanceOf[String]
+      val mongoDBUser = commandLine.getParsedOptionValue("user").asInstanceOf[String]
+      val mongoDBPass = commandLine.getParsedOptionValue("password").asInstanceOf[String]
 
-    val hadoopFile: String = try {
-      args(0)
+      if (commandLine.hasOption("e")) {
+        extractAndSaveTokens(
+          commandLine.getParsedOptionValue("hadoop_file").asInstanceOf[String],
+          mongoDBPath,
+          mongoDBUser,
+          mongoDBPass)
+        return
+      }
+
+      if (commandLine.hasOption("i")) {
+        createInverseIndex(mongoDBPath, mongoDBUser, mongoDBPass)
+        return
+      }
+
+      if (commandLine.hasOption("h")) {
+        new HelpFormatter().printHelp("wiki_data_fetcher.jar", options)
+      }
+
     } catch {
-      case e: Exception => {
+      case e: ParseException => {
+        println("Unexpected exception: " + e.getMessage)
         e.printStackTrace()
-        sys.exit(2)
       }
     }
+  }
+
+  def extractAndSaveTokens(hadoopFile: String, mongoDBPath: String, mongoDBUser: String, mongoDBPW: String) = {
 
     val ngrams = List(5, 7, 10)
     println(s"Start with File $hadoopFile with ngramSizes of: $ngrams ")
@@ -143,6 +216,10 @@ object SparkApp {
 
       })
     sc.stop()
+  }
+
+  def createInverseIndex(mongoDBPath: String, mongoDBUser: String, mongoDBPW: String) = {
+
   }
 
 }
