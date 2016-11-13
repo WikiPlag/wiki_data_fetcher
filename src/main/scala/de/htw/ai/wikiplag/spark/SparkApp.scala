@@ -1,5 +1,8 @@
 package de.htw.ai.wikiplag.spark
 
+import com.mongodb.ServerAddress
+import com.mongodb.casbah.Imports._
+import com.mongodb.casbah.MongoClient
 import de.htw.ai.wikiplag.forwardreferencetable.ForwardReferenceTableImp
 import de.htw.ai.wikiplag.parser.WikiDumpParser
 import de.htw.ai.wikiplag.viewindex.ViewIndexBuilderImp
@@ -83,7 +86,7 @@ object SparkApp {
       val mongoDBPass = commandLine.getParsedOptionValue("password").asInstanceOf[String]
 
       if (commandLine.hasOption("e")) {
-        extractAndSaveTokens(
+        extractText(
           commandLine.getParsedOptionValue("hadoop_file").asInstanceOf[String],
           mongoDBPath,
           mongoDBUser,
@@ -108,13 +111,36 @@ object SparkApp {
     }
   }
 
-  def extractAndSaveTokens(hadoopFile: String, mongoDBPath: String, mongoDBUser: String, mongoDBPW: String) = {
+  def extractText(hadoopFile: String, mongoDBPath: String, mongoDBUser: String, mongoDBPW: String) = {
+    val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
+
+    val sc = new SparkContext(sparkConf)
+    val sqlContext = new SQLContext(sc)
+    val df = sqlContext.load("com.databricks.spark.xml", Map("path" -> hadoopFile, "rowTag" -> "page"))
+
+    val wikiClient = sc.broadcast(WikiCollection(mongoDBPath, 27020, mongoDBUser, mongoDBPW, "wiki"))
+
+    df
+      .filter("ns = 0")
+      .select("id", "title", "revision.text")
+      .foreach(t => {
+        val wikiID = t.getLong(0)
+        val rawText = t.getStruct(2).getString(0)
+        val frontText = WikiDumpParser.parseXMLWikiPage(rawText)
+        val tokens = WikiDumpParser.extractWikiDisplayText(frontText)
+
+        val viewIdx = ViewIndexBuilderImp.buildViewIndex(frontText, tokens)
+        wikiClient.value.insertArticle(wikiID, t.getString(1), frontText, viewIdx)
+      })
+    sc.stop()
+  }
+
+  def buildNgrams(hadoopFile: String, mongoDBPath: String, mongoDBUser: String, mongoDBPW: String) = {
 
     val ngrams = List(5, 7, 10)
     println(s"Start with File $hadoopFile with ngramSizes of: $ngrams ")
 
-    val sparkConf = new SparkConf()
-      .setAppName("WikiPlagSparkApp")
+    val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
 
     val sc = new SparkContext(sparkConf)
     val sqlContext = new SQLContext(sc)
@@ -131,21 +157,13 @@ object SparkApp {
         val rawText = t.getStruct(2).getString(0)
         val frontText = WikiDumpParser.parseXMLWikiPage(rawText)
         val tokens = WikiDumpParser.extractWikiDisplayText(frontText)
-        var isAtLeastOneHash = false
 
         for (n <- ngrams) {
           val frt = ForwardReferenceTableImp.buildForwardReferenceTable(tokens.map(_.toLowerCase()), n).toMap
           if (frt.nonEmpty) {
             mongoClient.value.insertNGramHashes(n, wikiID, frt)
-            isAtLeastOneHash = true
           }
         }
-
-        if (isAtLeastOneHash) {
-          val viewIdx = ViewIndexBuilderImp.buildViewIndex(frontText, tokens)
-          mongoClient.value.insertArticle(wikiID, t.getString(1), frontText, viewIdx)
-        }
-
       })
     sc.stop()
   }
