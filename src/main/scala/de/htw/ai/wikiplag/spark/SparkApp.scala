@@ -3,7 +3,7 @@ package de.htw.ai.wikiplag.spark
 import de.htw.ai.wikiplag.forwardreferencetable.ForwardReferenceTableImp
 import de.htw.ai.wikiplag.parser.WikiDumpParser
 import de.htw.ai.wikiplag.viewindex.ViewIndexBuilderImp
-import org.apache.commons.cli.{DefaultParser, HelpFormatter, Option, OptionGroup, Options, ParseException}
+import org.apache.commons.cli.{DefaultParser, HelpFormatter, Option, OptionGroup, Options}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.SQLContext
 
@@ -12,6 +12,11 @@ import org.apache.spark.sql.SQLContext
   */
 object SparkApp {
 
+  def printHelp(options: Options) = {
+    val header = "\nOptions:"
+    val footer = "\nProjektstudium Wikiplag\nHTW Berlin\n"
+    new HelpFormatter().printHelp(110, "wiki_data_fetcher.jar", header, options, footer, true)
+  }
 
   def createCLIOptions() = {
     val options = new Options()
@@ -31,6 +36,15 @@ object SparkApp {
       .argName("path")
       .build())
 
+    options.addOption(Option.builder("p")
+      .longOpt("mongodb_port")
+      .desc("MongoDB Port")
+      .required()
+      .numberOfArgs(1)
+      .`type`(classOf[String])
+      .argName("port")
+      .build())
+
     options.addOption(Option.builder("u")
       .longOpt("mongodb_user")
       .desc("MongoDB User")
@@ -40,7 +54,7 @@ object SparkApp {
       .argName("user")
       .build())
 
-    options.addOption(Option.builder("p")
+    options.addOption(Option.builder("pw")
       .longOpt("mongodb_password")
       .desc("MongoDB Password")
       .required()
@@ -63,9 +77,18 @@ object SparkApp {
     )
 
     group.addOption(Option.builder("i")
-      .longOpt("createindex")
+      .longOpt("index")
       .desc("use db-entries to create an inverse index and stores it back")
       .numberOfArgs(0)
+      .build()
+    )
+
+    group.addOption(Option.builder("n")
+      .longOpt("ngrams")
+      .desc("use db-entries to create hashed n-grams of a given size")
+      .numberOfArgs(1)
+      .`type`(classOf[Int])
+      .argName("ngram")
       .build()
     )
 
@@ -79,43 +102,45 @@ object SparkApp {
     try {
       val commandLine = new DefaultParser().parse(options, args)
       val mongoDBPath = commandLine.getParsedOptionValue("path").asInstanceOf[String]
+      val mongoDBPort = commandLine.getParsedOptionValue("port").asInstanceOf[Int]
       val mongoDBUser = commandLine.getParsedOptionValue("user").asInstanceOf[String]
       val mongoDBPass = commandLine.getParsedOptionValue("password").asInstanceOf[String]
 
-      if (commandLine.hasOption("e")) {
-        extractText(
-          commandLine.getParsedOptionValue("hadoop_file").asInstanceOf[String],
-          mongoDBPath,
-          mongoDBUser,
-          mongoDBPass)
-        return
-      }
-
-      if (commandLine.hasOption("i")) {
-        createInverseIndex(mongoDBPath, mongoDBUser, mongoDBPass)
-        return
-      }
-
       if (commandLine.hasOption("h")) {
-        new HelpFormatter().printHelp("wiki_data_fetcher.jar", options)
+        printHelp(options)
+      }
+
+      if (commandLine.hasOption("e")) {
+        val file = commandLine.getParsedOptionValue("hadoop_file").asInstanceOf[String]
+        extractText(file, mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass)
+
+      } else if (commandLine.hasOption("i")) {
+        createInverseIndex(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass)
+
+      } else if (commandLine.hasOption("n")) {
+        val ngramSize = commandLine.getParsedOptionValue("ngram").asInstanceOf[Int]
+        buildNGrams(ngramSize, mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass)
       }
 
     } catch {
-      case e: ParseException => {
+      case e: Exception =>
         println("Unexpected exception: " + e.getMessage)
-        e.printStackTrace()
-      }
+        printHelp(options)
     }
   }
 
-  def extractText(hadoopFile: String, mongoDBPath: String, mongoDBUser: String, mongoDBPW: String) = {
+  /*
+   * core functions
+   */
+
+  def extractText(hadoopFile: String, mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
     val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
 
     val sc = new SparkContext(sparkConf)
     val sqlContext = new SQLContext(sc)
     val df = sqlContext.load("com.databricks.spark.xml", Map("path" -> hadoopFile, "rowTag" -> "page"))
 
-    val wikiClient = sc.broadcast(WikiCollection(mongoDBPath, 27020, mongoDBUser, mongoDBPW, "wiki"))
+    val wikiClient = sc.broadcast(WikiCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wiki"))
 
     df
       .filter("ns = 0")
@@ -132,10 +157,8 @@ object SparkApp {
     sc.stop()
   }
 
-  def buildNgrams(hadoopFile: String, mongoDBPath: String, mongoDBUser: String, mongoDBPW: String) = {
-
-    val ngrams = List(5, 7, 10)
-    println(s"Start with File $hadoopFile with ngramSizes of: $ngrams ")
+  def buildNGrams(ngramSize: Int, mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
+    println(s"Generate N-Grams of size: $ngramSize")
 
     val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
 
@@ -165,7 +188,7 @@ object SparkApp {
     sc.stop()
   }
 
-  def createInverseIndex(mongoDBPath: String, mongoDBUser: String, mongoDBPW: String) = {
+  def createInverseIndex(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
 
   }
 
