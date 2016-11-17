@@ -1,8 +1,5 @@
 package de.htw.ai.wikiplag.spark
 
-import com.mongodb.ServerAddress
-import com.mongodb.casbah.Imports._
-import com.mongodb.casbah.MongoClient
 import de.htw.ai.wikiplag.forwardreferencetable.ForwardReferenceTableImp
 import de.htw.ai.wikiplag.parser.WikiDumpParser
 import de.htw.ai.wikiplag.viewindex.ViewIndexBuilderImp
@@ -144,7 +141,7 @@ object SparkApp {
 
     val sc = new SparkContext(sparkConf)
     val sqlContext = new SQLContext(sc)
-    val mongoClient = sc.broadcast(MongoDBClient(ngrams))
+    val mongoClient = sc.broadcast(MongoDbClient(ngrams))
 
     val df = sqlContext
       .load("com.databricks.spark.xml", Map("path" -> hadoopFile, "rowTag" -> "page"))

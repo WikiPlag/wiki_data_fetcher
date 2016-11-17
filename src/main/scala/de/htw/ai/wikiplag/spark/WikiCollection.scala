@@ -1,6 +1,6 @@
 package de.htw.ai.wikiplag.spark
 
-import com.mongodb.ServerAddress
+import com.mongodb.{CursorType, ServerAddress}
 import com.mongodb.casbah.Imports._
 import com.mongodb.casbah.{MongoClient, MongoCollection}
 
@@ -18,6 +18,10 @@ class WikiCollection(createWikiCollection: () => MongoCollection) {
       ("text", text),
       ("viewindex", viewIndex)
     ))
+  }
+
+  def iterator(): MongoCursor = {
+    wikiCollection.find()
   }
 }
 
