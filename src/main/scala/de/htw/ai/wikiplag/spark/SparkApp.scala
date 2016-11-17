@@ -131,7 +131,7 @@ object SparkApp {
   }
 
   /*
-   * core functionsgit st
+   * core functions
    */
 
   def extractText(hadoopFile: String, mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
