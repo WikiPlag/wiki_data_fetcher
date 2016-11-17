@@ -119,7 +119,8 @@ object SparkApp {
 
       } else if (commandLine.hasOption("n")) {
         val ngramSize = commandLine.getParsedOptionValue("ngram").asInstanceOf[Int]
-        buildNGrams(ngramSize, mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass)
+        val file = commandLine.getParsedOptionValue("hadoop_file").asInstanceOf[String]
+        buildNGrams(ngramSize, file, mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass)
       }
 
     } catch {
@@ -130,7 +131,7 @@ object SparkApp {
   }
 
   /*
-   * core functions
+   * core functionsgit st
    */
 
   def extractText(hadoopFile: String, mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
@@ -157,9 +158,9 @@ object SparkApp {
     sc.stop()
   }
 
-  def buildNGrams(ngramSize: Int, mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
+  def buildNGrams(ngramSize: Int, hadoopFile: String, mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
     println(s"Generate N-Grams of size: $ngramSize")
-
+    val ngrams = List(5, 7, 10)
     val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
 
     val sc = new SparkContext(sparkConf)
