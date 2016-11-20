@@ -1,6 +1,3 @@
-// import AssemblyKeys._
-
-// assemblySettings
 
 name := "wiki_data_fetcher"
 version := "1.0"
@@ -20,4 +17,4 @@ libraryDependencies ++= Seq(
   "commons-cli" % "commons-cli" % "1.3.1"
 )
 
-// assemblyJarName in assembly := "something.jar"
+assemblyJarName in assembly := "wiki_data_fetcher.jar"
