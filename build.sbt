@@ -1,3 +1,4 @@
+
 name := "wiki_data_fetcher"
 version := "1.0"
 scalaVersion := "2.10.4"
@@ -18,4 +19,4 @@ libraryDependencies ++= Seq(
   "commons-cli" % "commons-cli" % "1.2"
 )
 
-// assemblyJarName in assembly := "something.jar"
+assemblyJarName in assembly := "wiki_data_fetcher.jar"
