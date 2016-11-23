@@ -3,9 +3,9 @@ package de.htw.ai.wikiplag.spark
 import de.htw.ai.wikiplag.forwardreferencetable.ForwardReferenceTableImp
 import de.htw.ai.wikiplag.parser.WikiDumpParser
 import de.htw.ai.wikiplag.viewindex.ViewIndexBuilderImp
-import org.apache.commons.cli.{DefaultParser, HelpFormatter, Option, OptionGroup, Options}
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.commons.cli._
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.{SparkConf, SparkContext}
 
 /**
   * Created by Max M on 11.06.2016.
@@ -20,77 +20,66 @@ object SparkApp {
 
   def createCLIOptions() = {
     val options = new Options()
-    options.addOption(Option.builder("h")
-      .longOpt("help")
-      .hasArg(false)
-      .build())
+    OptionBuilder.withLongOpt("help")
+    OptionBuilder.hasArg(false)
+    options.addOption(OptionBuilder.create("h"))
 
     /* MongoDB Settings */
 
-    options.addOption(Option.builder("m")
-      .longOpt("mongodb_path")
-      .desc("MongoDB Path")
-      .required()
-      .numberOfArgs(1)
-      .`type`(classOf[String])
-      .argName("path")
-      .build())
+    OptionBuilder.withLongOpt("mongodb_path")
+    OptionBuilder.withDescription("MongoDB Path")
+    OptionBuilder.isRequired
+    OptionBuilder.hasArgs(1)
+    OptionBuilder.withType(classOf[String])
+    OptionBuilder.withArgName("path")
+    options.addOption(OptionBuilder.create("m"))
 
-    options.addOption(Option.builder("p")
-      .longOpt("mongodb_port")
-      .desc("MongoDB Port")
-      .required()
-      .numberOfArgs(1)
-      .`type`(classOf[String])
-      .argName("port")
-      .build())
+    OptionBuilder.withLongOpt("mongodb_port")
+    OptionBuilder.withDescription("MongoDB Port")
+    OptionBuilder.isRequired
+    OptionBuilder.hasArgs(1)
+    OptionBuilder.withType(classOf[Number])
+    OptionBuilder.withArgName("port")
+    options.addOption(OptionBuilder.create("p"))
 
-    options.addOption(Option.builder("u")
-      .longOpt("mongodb_user")
-      .desc("MongoDB User")
-      .required()
-      .numberOfArgs(1)
-      .`type`(classOf[String])
-      .argName("user")
-      .build())
+    OptionBuilder.withLongOpt("mongodb_user")
+    OptionBuilder.withDescription("MongoDB user")
+    OptionBuilder.isRequired
+    OptionBuilder.hasArgs(1)
+    OptionBuilder.withType(classOf[String])
+    OptionBuilder.withArgName("user")
+    options.addOption(OptionBuilder.create("u"))
 
-    options.addOption(Option.builder("pw")
-      .longOpt("mongodb_password")
-      .desc("MongoDB Password")
-      .required()
-      .numberOfArgs(1)
-      .`type`(classOf[String])
-      .argName("password")
-      .build())
+    OptionBuilder.withLongOpt("mongodb_password")
+    OptionBuilder.withDescription("MongoDB Password")
+    OptionBuilder.isRequired
+    OptionBuilder.hasArgs(1)
+    OptionBuilder.withType(classOf[String])
+    OptionBuilder.withArgName("password")
+    options.addOption(OptionBuilder.create("pw"))
 
     /* Commands */
 
     val group = new OptionGroup()
 
-    group.addOption(Option.builder("e")
-      .longOpt("extract")
-      .desc("parse wiki XML file and saves in a db")
-      .numberOfArgs(1)
-      .argName("hadoop_file")
-      .`type`(classOf[String])
-      .build()
-    )
+    OptionBuilder.withLongOpt("extract")
+    OptionBuilder.withDescription("parse wiki XML file and saves in a db")
+    OptionBuilder.hasArgs(1)
+    OptionBuilder.withType(classOf[String])
+    OptionBuilder.withArgName("hadoop_file")
+    group.addOption(OptionBuilder.create("e"))
 
-    group.addOption(Option.builder("i")
-      .longOpt("index")
-      .desc("use db-entries to create an inverse index and stores it back")
-      .numberOfArgs(0)
-      .build()
-    )
+    OptionBuilder.withLongOpt("index")
+    OptionBuilder.withDescription("use db-entries to create an inverse index and stores it back")
+    OptionBuilder.hasArgs(0)
+    group.addOption(OptionBuilder.create("i"))
 
-    group.addOption(Option.builder("n")
-      .longOpt("ngrams")
-      .desc("use db-entries to create hashed n-grams of a given size")
-      .numberOfArgs(1)
-      .`type`(classOf[Int])
-      .argName("ngram")
-      .build()
-    )
+    OptionBuilder.withLongOpt("ngrams")
+    OptionBuilder.withDescription("use db-entries to create hashed n-grams of a given size")
+    OptionBuilder.hasArgs(1)
+    OptionBuilder.withType(classOf[Number])
+    OptionBuilder.withArgName("ngram")
+    group.addOption(OptionBuilder.create("n"))
 
     options.addOptionGroup(group)
     options
@@ -100,18 +89,18 @@ object SparkApp {
     val options = createCLIOptions()
 
     try {
-      val commandLine = new DefaultParser().parse(options, args)
-      val mongoDBPath = commandLine.getParsedOptionValue("path").asInstanceOf[String]
-      val mongoDBPort = commandLine.getParsedOptionValue("port").asInstanceOf[Int]
-      val mongoDBUser = commandLine.getParsedOptionValue("user").asInstanceOf[String]
-      val mongoDBPass = commandLine.getParsedOptionValue("password").asInstanceOf[String]
+      val commandLine = new GnuParser().parse(options, args)
+      val mongoDBPath = commandLine.getParsedOptionValue("mongodb_path").asInstanceOf[String]
+      val mongoDBPort = commandLine.getParsedOptionValue("mongodb_port").asInstanceOf[Number].intValue()
+      val mongoDBUser = commandLine.getParsedOptionValue("mongodb_user").asInstanceOf[String]
+      val mongoDBPass = commandLine.getParsedOptionValue("mongodb_password").asInstanceOf[String]
 
       if (commandLine.hasOption("h")) {
         printHelp(options)
       }
 
       if (commandLine.hasOption("e")) {
-        val file = commandLine.getParsedOptionValue("hadoop_file").asInstanceOf[String]
+        val file = commandLine.getParsedOptionValue("e").asInstanceOf[String]
         extractText(file, mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass)
 
       } else if (commandLine.hasOption("i")) {
@@ -125,7 +114,8 @@ object SparkApp {
 
     } catch {
       case e: Exception =>
-        println("Unexpected exception: " + e.getMessage)
+        println("Unexpected exception: ")
+        e.printStackTrace()
         printHelp(options)
     }
   }
@@ -135,6 +125,7 @@ object SparkApp {
    */
 
   def extractText(hadoopFile: String, mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
+    println("hadoopfile: " + hadoopFile)
     val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
 
     val sc = new SparkContext(sparkConf)
