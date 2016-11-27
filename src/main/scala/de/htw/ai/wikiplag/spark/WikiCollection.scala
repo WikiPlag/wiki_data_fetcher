@@ -1,8 +1,6 @@
 package de.htw.ai.wikiplag.spark
 
-import com.mongodb.{CursorType, ServerAddress}
 import com.mongodb.casbah.Imports._
-import com.mongodb.casbah.{MongoClient, MongoCollection}
 
 class WikiCollection(createWikiCollection: () => MongoCollection)
   extends Serializable {
