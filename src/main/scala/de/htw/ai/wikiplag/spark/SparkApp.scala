@@ -138,7 +138,7 @@ object SparkApp {
       .option("rowTag", "page")
       .load(hadoopFile)
 
-    val wikiClient = sc.broadcast(WikiCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wiki"))
+    val wikiClient = sc.broadcast(WikiCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag"))
 
     df
       .filter("ns = 0")
