@@ -12,12 +12,12 @@ import org.apache.spark.sql.SQLContext
   * Created by Max M on 11.06.2016.
   */
 object SparkApp {
-
   private def printHelp(options: Options) = {
     val header = "\nOptions:"
     val footer = "\nProjektstudium Wikiplag\nHTW Berlin\n"
     new HelpFormatter().printHelp(110, "wiki_data_fetcher.jar", header, options, footer, true)
   }
+
 
   private def createCLIOptions() = {
     val options = new Options()
@@ -190,11 +190,13 @@ object SparkApp {
   private def createInverseIndex(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
     println("createInverseIndex")
     val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
-    val sc = new SparkContext(sparkConf)
 
-    val documentClient = sc.broadcast(WikiDocumentCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag"))
+    val sc = new SparkContext(sparkConf)
+    val documentColl = sc.broadcast(WikiDocumentCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag"))
+    val idxColl = WikiInverseIdxCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag")
+
     val r = sc
-      .parallelize(documentClient.value.iterator().limit(100).toIndexedSeq)
+      .parallelize(documentColl.value.iterator().toIndexedSeq) // ggf. limit(x)
       .map(x => {
         val text = x.get("text").asInstanceOf[String]
         if (text != null || text.nonEmpty) {
@@ -211,12 +213,13 @@ object SparkApp {
         }
       })
       .collect()
+      .filter(x => x != null)
+      .toList
 
-    val idxClient = WikiInverseIdxCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag")
-    val idxxx = InverseIndexBuilderImpl.mergeInverseIndexEntries(r.filter(x => x != null).toList)
-    idxxx.foreach(x => {
-      idxClient.insertInverseIndex(x._1, x._2)
-    })
+    InverseIndexBuilderImpl.mergeInverseIndexEntries(r)
+      .foreach(x => {
+        idxColl.insertInverseIndex(x._1, x._2)
+      })
 
   }
 }
