@@ -2,9 +2,10 @@ package de.htw.ai.wikiplag.spark
 
 import com.mongodb.casbah.Imports._
 
-class WikiCollection(createWikiCollection: () => MongoCollection)
-  extends Serializable {
-  lazy val wikiCollection = createWikiCollection()
+//http://allegro.tech/2015/08/spark-kafka-integration.html
+//http://stackoverflow.com/questions/25825058/why-multiple-mongodb-connecions-with-casbah
+class WikiDocumentCollection(createWikiCollection: () => MongoCollection) extends Serializable {
+  private lazy val wikiCollection = createWikiCollection()
 
   def insertArticle(wikiID: Long,
                     title: String,
@@ -24,10 +25,11 @@ class WikiCollection(createWikiCollection: () => MongoCollection)
   }
 }
 
-object WikiCollection {
-  def apply(mongoDBPath: String, port: Int, mongoDBUser: String, mongoDBPW: String, database: String): WikiCollection = {
-    val WikiCollectionName = "documents"
-    //http://stackoverflow.com/questions/25825058/why-multiple-mongodb-connecions-with-casbah
+object WikiDocumentCollection {
+  val WikiCollectionName = "documents"
+
+  def apply(mongoDBPath: String, port: Int, mongoDBUser: String, mongoDBPW: String, database: String): WikiDocumentCollection = {
+
     val createWikiCollectionFct = () => {
       val mongoClient = MongoClient(
         new ServerAddress(mongoDBPath, port),
@@ -37,8 +39,8 @@ object WikiCollection {
         mongoClient.close()
       }
       mongoClient(database)(WikiCollectionName)
-
     }
-    new WikiCollection(createWikiCollectionFct)
+
+    new WikiDocumentCollection(createWikiCollectionFct)
   }
 }
