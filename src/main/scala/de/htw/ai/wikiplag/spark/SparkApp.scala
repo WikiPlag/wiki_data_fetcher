@@ -197,10 +197,15 @@ object SparkApp {
       .parallelize(documentClient.value.iterator().limit(100).toIndexedSeq)
       .map(x => {
         val text = x.get("text").asInstanceOf[String]
-        if (text != null || !text.isEmpty) {
-          val id = x.get("_id").asInstanceOf[Long].toInt
-          val idx = InverseIndexBuilderImpl.buildInverseIndexEntry(id, InverseIndexBuilderImpl.buildIndexKeys(text))
-          idx
+        if (text != null || text.nonEmpty) {
+          val tokens = InverseIndexBuilderImpl.buildIndexKeys(text)
+          if (tokens != null || tokens.nonEmpty) {
+            val id = x.get("_id").asInstanceOf[Long].toInt
+            val idx = InverseIndexBuilderImpl.buildInverseIndexEntry(id, tokens)
+            idx
+          } else {
+            null
+          }
         } else {
           null
         }
