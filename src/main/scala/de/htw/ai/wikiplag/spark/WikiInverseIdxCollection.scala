@@ -6,31 +6,35 @@ class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) ex
   private lazy val invIdxCollection = createInvIdxCollection()
 
   /**
-    * Insert a new token with all occurences
+    * insert a new token with all occurrences
     *
     * @param word    Token, e.g. house, wikipedia, ...
-    * @param doclist List of [(wiki_id, List(occurences))]
+    * @param doclist List of [(wiki_id, List(occurrences))]
     */
   def insertInverseIndex(word: String, doclist: List[(Int, List[Int])]): Unit = {
     invIdxCollection.insert(MongoDBObject(
       ("_id", word),
-      ("doclist", doclist)
+      ("doc_list", doclist)
     ))
   }
 
+  /**
+    * insert or update an entry (via id)
+    *
+    * @param word        Token, e.g. house, wikipedia, ...
+    * @param wiki_id     wikipedia article id
+    * @param occurrences List of [occurences]
+    */
   def upsertInverseIndex(word: String, wiki_id: Int, occurrences: List[Int]): Unit = {
     val oldEntry = invIdxCollection.findOneByID(MongoDBObject("_id" -> word))
-    if (oldEntry.isDefined) { // insert new
+    if (oldEntry.isDefined) {
       val newEntry = MongoDBObject(
         ("_id", word),
-        ("doclist", List((wiki_id, occurrences)))
+        ("doc_list", List((wiki_id, occurrences)))
       )
       invIdxCollection.insert(newEntry)
-    } else { // update
-//      val newEntry = MongoDBObject(
-//          "$push" -> MongoDBObject("doclist" -> occurrences)
-//        )
-      val newEntry = $push("doclist" -> occurrences)
+    } else {
+      val newEntry = $push("doclist" -> List((wiki_id, occurrences)))
       invIdxCollection.update(oldEntry.get, newEntry)
     }
   }
