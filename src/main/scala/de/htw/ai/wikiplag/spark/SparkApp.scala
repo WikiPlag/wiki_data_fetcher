@@ -192,8 +192,6 @@ object SparkApp {
     val sc = new SparkContext(sparkConf)
     val uri = "mongodb://" + mongoDBPath + ":" + mongoDBPort + "/wikiplag.documents"
     val authUri = "mongodb://" + mongoDBUser + ":" + mongoDBPW + "@" + mongoDBPath + ":" + mongoDBPort + "/wikiplag"
-    println(uri)
-    println(authUri)
     // set up parameters for reading from MongoDB via Hadoop input format
     val config = new Configuration()
     config.set("mongo.input.uri", uri)
@@ -205,10 +203,10 @@ object SparkApp {
       classOf[Object],
       classOf[org.bson.BSONObject])
 
-
+    val documents = casRdd.map(x => (x._2.get("_id").asInstanceOf[Long], x._2.get("title").toString, x._2.get("text").toString)).take(1).toList
 
     println("createInverseIndex")
-    println(casRdd.take(1))
+    println(documents)
   }
 
 }
