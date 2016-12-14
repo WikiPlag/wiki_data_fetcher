@@ -9,6 +9,10 @@ val mongoDBDriverDep = "org.mongodb" %% "casbah" % "3.1.1"
 val sparkCoreDep = "org.apache.spark" %% "spark-core" % "1.5.0" % "provided"
 val sparkSQLDep = "org.apache.spark" %% "spark-sql" % "1.5.0" % "provided"
 val sparkDataBricksDep = "com.databricks" %% "spark-xml" % "0.3.3"
+val mongoDBHadoopCore = ("org.mongodb.mongo-hadoop" % "mongo-hadoop-core" % "1.5.1")
+  .exclude("commons-logging", "commons-logging")
+  .exclude("commons-beanutils", "commons-beanutils-core")
+  .exclude("commons-collections", "commons-collections")
 
 libraryDependencies ++= Seq(
   mongoDBDriverDep,
@@ -16,7 +20,8 @@ libraryDependencies ++= Seq(
   sparkSQLDep,
   sparkDataBricksDep,
   "com.github.WikiPlag" % "wikiplag_utils" % "-SNAPSHOT",
-  "commons-cli" % "commons-cli" % "1.2"
+  "commons-cli" % "commons-cli" % "1.2",
+  mongoDBHadoopCore
 )
 
 assemblyJarName in assembly := "wiki_data_fetcher.jar"
