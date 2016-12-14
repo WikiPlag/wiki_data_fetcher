@@ -1,5 +1,6 @@
 package de.htw.ai.wikiplag.spark
 
+import de.htw.ai.wikiplag.data.InverseIndexBuilderImpl
 import de.htw.ai.wikiplag.parser.WikiDumpParser
 import de.htw.ai.wikiplag.viewindex.ViewIndexBuilderImp
 import org.apache.commons.cli._
@@ -203,10 +204,13 @@ object SparkApp {
       classOf[Object],
       classOf[org.bson.BSONObject])
 
-    val documents = casRdd.map(x => (x._2.get("_id").asInstanceOf[Long], x._2.get("title").toString, x._2.get("text").toString)).take(1).toList
+    val documents = casRdd.map(x => (x._2.get("_id").asInstanceOf[Long], x._2.get("title").toString, x._2.get("text").toString))
+    val idTokens = documents.map(x => (x._1, InverseIndexBuilderImpl.buildIndexKeys(x._3)))
+    val invIndexEntries = idTokens.map(x => InverseIndexBuilderImpl.buildInverseIndexEntry(x._1, x._2))
+
 
     println("createInverseIndex")
-    println(documents)
+    println(invIndexEntries.take(1).toList.toString())
   }
 
 }
