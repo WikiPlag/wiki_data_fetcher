@@ -18,7 +18,6 @@ object SparkApp {
     new HelpFormatter().printHelp(110, "wiki_data_fetcher.jar", header, options, footer, true)
   }
 
-
   private def createCLIOptions() = {
     val options = new Options()
     OptionBuilder.withLongOpt("help")
@@ -107,7 +106,7 @@ object SparkApp {
         extractText(file, mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass)
 
       } else if (commandLine.hasOption("i")) {
-        createInverseIndex(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass)
+        createInverseIndex2(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass)
 
       } else if (commandLine.hasOption("n")) {
         val ngramSize = commandLine.getParsedOptionValue("n").asInstanceOf[Int]
@@ -196,22 +195,22 @@ object SparkApp {
     val idxColl = WikiInverseIdxCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag")
 
     val r = sc
-      .parallelize(documentColl.value.iterator().toIndexedSeq) // ggf. limit(x)
+      .parallelize(documentColl.value.iterator().limit(100).toIndexedSeq) // ggf. limit(x)
       .map(x => {
-        val text = x.get("text").asInstanceOf[String]
-        if (text != null || text.nonEmpty) {
-          val tokens = InverseIndexBuilderImpl.buildIndexKeys(text)
-          if (tokens != null || tokens.nonEmpty) {
-            val id = x.get("_id").asInstanceOf[Long].toInt
-            val idx = InverseIndexBuilderImpl.buildInverseIndexEntry(id, tokens)
-            idx
-          } else {
-            null
-          }
+      val text = x.get("text").asInstanceOf[String]
+      if (text != null || text.nonEmpty) {
+        val tokens = InverseIndexBuilderImpl.buildIndexKeys(text)
+        if (tokens != null || tokens.nonEmpty) {
+          val id = x.get("_id").asInstanceOf[Long].toInt
+          val idx = InverseIndexBuilderImpl.buildInverseIndexEntry(id, tokens)
+          idx
         } else {
           null
         }
-      })
+      } else {
+        null
+      }
+    })
       .collect()
       .filter(x => x != null)
       .toList
@@ -220,6 +219,31 @@ object SparkApp {
       .foreach(x => {
         idxColl.insertInverseIndex(x._1, x._2)
       })
-
   }
+
+  private def createInverseIndex2(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
+    println("createInverseIndex 2, insert per document")
+    val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
+
+    val sc = new SparkContext(sparkConf)
+    val documentColl = sc.broadcast(WikiDocumentCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag"))
+    val idxColl = sc.broadcast(WikiInverseIdxCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag"))
+
+    val r = sc
+      .parallelize(documentColl.value.iterator().toIndexedSeq)
+      .foreach(x => {
+      val text = x.get("text").asInstanceOf[String]
+      if (text != null || text.nonEmpty) {
+        val tokens = InverseIndexBuilderImpl.buildIndexKeys(text)
+        if (tokens != null || tokens.nonEmpty) {
+          val id = x.get("_id").asInstanceOf[Long].toInt
+          val idx = InverseIndexBuilderImpl.buildInverseIndexEntry(id, tokens)
+          idx.foreach(x => {
+            idxColl.value.upsertInverseIndex(x._1, id, x._2._2)
+          })
+        }
+      }
+    })
+  }
+
 }

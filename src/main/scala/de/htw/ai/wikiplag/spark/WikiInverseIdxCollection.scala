@@ -11,7 +11,7 @@ class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) ex
     * @param word    Token, e.g. house, wikipedia, ...
     * @param doclist List of [(wiki_id, List(occurrences))]
     */
-  def insertInverseIndex(word: String, doclist: List[(Int, List[Int])]): Unit = {
+  def insertInverseIndex(word: String, doclist: List[(Long, List[Int])]): Unit = {
     invIdxCollection.insert(MongoDBObject(
       ("_id", word),
       ("doc_list", doclist)
@@ -25,16 +25,16 @@ class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) ex
     * @param wiki_id     wikipedia article id
     * @param occurrences List of [occurences]
     */
-  def upsertInverseIndex(word: String, wiki_id: Int, occurrences: List[Int]): Unit = {
+  def upsertInverseIndex(word: String, wiki_id: Long, occurrences: List[Int]): Unit = {
     val oldEntry = invIdxCollection.findOneByID(MongoDBObject("_id" -> word))
-    if (oldEntry.isDefined) {
+    if (oldEntry.isEmpty) {
       val newEntry = MongoDBObject(
         ("_id", word),
         ("doc_list", List((wiki_id, occurrences)))
       )
       invIdxCollection.insert(newEntry)
     } else {
-      val newEntry = $push("doclist" -> List((wiki_id, occurrences)))
+      val newEntry = $push("doc_list" -> List((wiki_id, occurrences)))
       invIdxCollection.update(oldEntry.get, newEntry)
     }
   }
