@@ -188,6 +188,7 @@ object SparkApp {
   }
 
   private def createInverseIndex(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
+    println("createInverseIndex")
     val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
 
     val sc = new SparkContext(sparkConf)
@@ -207,10 +208,15 @@ object SparkApp {
     val documents = casRdd.map(x => (x._2.get("_id").asInstanceOf[Long], x._2.get("title").toString, x._2.get("text").toString))
     val idTokens = documents.map(x => (x._1, InverseIndexBuilderImpl.buildIndexKeys(x._3)))
     val invIndexEntries = idTokens.map(x => InverseIndexBuilderImpl.buildInverseIndexEntry(x._1, x._2))
+    val idxColl = WikiInverseIdxCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag")
 
-
-    println("createInverseIndex")
     println(invIndexEntries.take(1).toList.toString())
+
+    InverseIndexBuilderImpl.mergeInverseIndexEntries(invIndexEntries.toLocalIterator.toList)
+      .foreach(x => {
+        idxColl.insertInverseIndex(x._1, x._2)
+      })
+
   }
 
   private def createInverseIndexCasbah(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
