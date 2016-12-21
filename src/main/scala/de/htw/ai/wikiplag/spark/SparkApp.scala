@@ -208,13 +208,13 @@ object SparkApp {
     val documents = casRdd.map(x => (x._2.get("_id").asInstanceOf[Long], x._2.get("title").toString, x._2.get("text").toString))
     val idTokens = documents.map(x => (x._1, InverseIndexBuilderImpl.buildIndexKeys(x._3)))
     val invIndexEntries = idTokens.map(x => InverseIndexBuilderImpl.buildInverseIndexEntry(x._1, x._2))
-    val idxColl = WikiInverseIdxCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag")
+    val idxColl = sc.broadcast(WikiInverseIdxCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag"))
 
     println(invIndexEntries.take(1).toList.toString())
 
     InverseIndexBuilderImpl.mergeInverseIndexEntries(invIndexEntries.toLocalIterator.toList)
       .foreach(x => {
-        idxColl.insertInverseIndex(x._1, x._2)
+        idxColl.value.insertInverseIndex(x._1, x._2)
       })
 
   }
