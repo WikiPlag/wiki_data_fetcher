@@ -14,6 +14,15 @@ val mongoDBHadoopCore = ("org.mongodb.mongo-hadoop" % "mongo-hadoop-core" % "1.5
   .exclude("commons-beanutils", "commons-beanutils-core")
   .exclude("commons-collections", "commons-collections")
 
+val testDependencies = Seq(
+  "org.slf4j" % "slf4j-simple" % "1.7.21" % "test",
+  "junit" % "junit" % "4.11" % "test",
+  "org.scalatest" %% "scalatest" % "2.2.6" % "test",
+  "org.apache.commons" % "commons-configuration2" % "2.1" % "test",
+  "commons-beanutils" % "commons-beanutils" % "1.9.2" % "test"
+)
+
+libraryDependencies ++= testDependencies
 libraryDependencies ++= Seq(
   mongoDBDriverDep,
   sparkCoreDep,

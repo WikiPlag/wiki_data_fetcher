@@ -1,18 +1,18 @@
 package de.htw.ai.wikiplag.spark
 
 import de.htw.ai.wikiplag.data.InverseIndexBuilderImpl
-import de.htw.ai.wikiplag.forwardreferencetable.ForwardReferenceTableImp
 import de.htw.ai.wikiplag.parser.WikiDumpParser
 import de.htw.ai.wikiplag.viewindex.ViewIndexBuilderImp
 import org.apache.commons.cli._
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.{SparkConf, SparkContext}
 
 /**
   * Created by Max M on 11.06.2016.
   */
 object SparkApp {
+
   private def printHelp(options: Options) = {
     val header = "\nOptions:"
     val footer = "\nProjektstudium Wikiplag\nHTW Berlin\n"
@@ -158,33 +158,33 @@ object SparkApp {
 
   private def buildNGrams(ngramSize: Int, mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
     println(s"Generate N-Grams of size: $ngramSize")
-//    val ngrams = List(5, 7, 10)
-//    val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
-//
-//    val sc = new SparkContext(sparkConf)
-//    val sqlContext = new SQLContext(sc)
-//    val mongoClient = sc.broadcast(MongoDbClient(ngrams))
-//
-//    val df = sqlContext
-//      .load("com.databricks.spark.xml", Map("path" -> hadoopFile, "rowTag" -> "page"))
-//
-//    df
-//      .filter("ns = 0")
-//      .select("id", "title", "revision.text")
-//      .foreach(t => {
-//        val wikiID = t.getLong(0)
-//        val rawText = t.getStruct(2).getString(0)
-//        val frontText = WikiDumpParser.parseXMLWikiPage(rawText)
-//        val tokens = WikiDumpParser.extractWikiDisplayText(frontText)
-//
-//        for (n <- ngrams) {
-//          val frt = ForwardReferenceTableImp.buildForwardReferenceTable(tokens.map(_.toLowerCase()), n).toMap
-//          if (frt.nonEmpty) {
-//            mongoClient.value.insertNGramHashes(n, wikiID, frt)
-//          }
-//        }
-//      })
-//    sc.stop()
+    //    val ngrams = List(5, 7, 10)
+    //    val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
+    //
+    //    val sc = new SparkContext(sparkConf)
+    //    val sqlContext = new SQLContext(sc)
+    //    val mongoClient = sc.broadcast(MongoDbClient(ngrams))
+    //
+    //    val df = sqlContext
+    //      .load("com.databricks.spark.xml", Map("path" -> hadoopFile, "rowTag" -> "page"))
+    //
+    //    df
+    //      .filter("ns = 0")
+    //      .select("id", "title", "revision.text")
+    //      .foreach(t => {
+    //        val wikiID = t.getLong(0)
+    //        val rawText = t.getStruct(2).getString(0)
+    //        val frontText = WikiDumpParser.parseXMLWikiPage(rawText)
+    //        val tokens = WikiDumpParser.extractWikiDisplayText(frontText)
+    //
+    //        for (n <- ngrams) {
+    //          val frt = ForwardReferenceTableImp.buildForwardReferenceTable(tokens.map(_.toLowerCase()), n).toMap
+    //          if (frt.nonEmpty) {
+    //            mongoClient.value.insertNGramHashes(n, wikiID, frt)
+    //          }
+    //        }
+    //      })
+    //    sc.stop()
   }
 
   private def createInverseIndex(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
@@ -210,12 +210,16 @@ object SparkApp {
     val invIndexEntries = idTokens.map(x => InverseIndexBuilderImpl.buildInverseIndexEntry(x._1, x._2))
     val idxColl = sc.broadcast(WikiInverseIdxCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag"))
 
-    println(invIndexEntries.take(1).toList.toString())
+    //    InverseIndexBuilderImpl.mergeInverseIndexEntries(invIndexEntries.toLocalIterator.toList)
+    //      .foreach(x => {
+    //        idxColl.value.insertInverseIndex(x._1, x._2)
+    //      })
 
-    InverseIndexBuilderImpl.mergeInverseIndexEntries(invIndexEntries.toLocalIterator.toList)
-      .foreach(x => {
-        idxColl.value.insertInverseIndex(x._1, x._2)
+    invIndexEntries.foreach(x => {
+      x.foreach(y => {
+        idxColl.value.upsertInverseIndex(y._1, y._2._1, y._2._2)
       })
+    })
 
   }
 

@@ -26,7 +26,8 @@ class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) ex
     * @param occurrences List of [occurences]
     */
   def upsertInverseIndex(word: String, wiki_id: Long, occurrences: List[Int]): Unit = {
-    val oldEntry = invIdxCollection.findOneByID(MongoDBObject("_id" -> word))
+    // db.inv_idx.find({ "_id": { $eq: "Lancelot" }})
+    val oldEntry = invIdxCollection.findOne(MongoDBObject("_id" -> word)) mongo
     if (oldEntry.isEmpty) {
       val newEntry = MongoDBObject(
         ("_id", word),
@@ -34,7 +35,7 @@ class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) ex
       )
       invIdxCollection.insert(newEntry)
     } else {
-      val newEntry = $push("doc_list" -> List((wiki_id, occurrences)))
+      val newEntry = $push("doc_list" -> (wiki_id, occurrences))
       invIdxCollection.update(oldEntry.get, newEntry)
     }
   }
@@ -42,9 +43,9 @@ class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) ex
 }
 
 object WikiInverseIdxCollection {
-  val WikiInverseIndexCollectionName = "inv_idx"
+  val WikiInverseIndexDefaultCollectionName = "inv_idx"
 
-  def apply(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String, mongoDBDatabase: String): WikiInverseIdxCollection = {
+  def apply(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String, mongoDBDatabase: String, mongoCollectionName: String = WikiInverseIndexDefaultCollectionName): WikiInverseIdxCollection = {
 
     val createInvIdxCollectionFct = () => {
       val mongoClient = MongoClient(
@@ -55,7 +56,7 @@ object WikiInverseIdxCollection {
       sys.addShutdownHook {
         mongoClient.close()
       }
-      mongoClient(mongoDBDatabase)(WikiInverseIndexCollectionName)
+      mongoClient(mongoDBDatabase)(mongoCollectionName)
     }
 
     new WikiInverseIdxCollection(createInvIdxCollectionFct)

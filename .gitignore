@@ -20,3 +20,6 @@ project/plugins/project/
 .worksheet
 
 out/*
+
+# Test Propertie File
+/src/test/resources/mongo.properties
