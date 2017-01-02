@@ -12,8 +12,14 @@ target/
 lib_managed/
 src_managed/
 project/boot/
+project/META-INF/
 project/plugins/project/
 
 # Scala-IDE specific
 .scala_dependencies
 .worksheet
+
+out/*
+
+# Test Propertie File
+/src/test/resources/mongo.properties
