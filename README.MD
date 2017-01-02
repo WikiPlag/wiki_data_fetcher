@@ -46,5 +46,10 @@ Options:
 ```
 e.g.
 ```bash
-wiki_data_fetcher.jar -e $HADOOP_PATH/wiki.xml -m mongoPath  -p mongoPort -u mongoUser -pw mongoPassword
+wiki_data_fetcher.jar -e $HADOOP_PATH/wiki.xml -m mongoPath -p mongoPort -u mongoUser -pw mongoPassword
 ```
+
+## Spark Logs
+
+* /var/log/spark
+* /run/spark/work

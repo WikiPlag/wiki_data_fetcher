@@ -1,9 +1,13 @@
 package de.htw.ai.wikiplag.spark
 
+import com.mongodb.DuplicateKeyException
 import com.mongodb.casbah.Imports._
+import org.apache.log4j.LogManager
 
 class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) extends Serializable {
   private lazy val invIdxCollection = createInvIdxCollection()
+  // use at least info-lvl, cause of our root htw-settings
+  private lazy val log = LogManager.getRootLogger
 
   /**
     * insert a new token with all occurrences
@@ -26,20 +30,31 @@ class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) ex
     * @param occurrences List of [occurences]
     */
   def upsertInverseIndex(word: String, wiki_id: Long, occurrences: List[Int]): Unit = {
-    // db.inv_idx.find({ "_id": { $eq: "Lancelot" }})
-    val oldEntry = invIdxCollection.findOne(MongoDBObject("_id" -> word)) mongo
+    // db.inv_idx.find({ "_id": { $eq: "Ereignisse" }})
+    val oldEntry = invIdxCollection.findOneByID(word)
     if (oldEntry.isEmpty) {
-      val newEntry = MongoDBObject(
-        ("_id", word),
-        ("doc_list", List((wiki_id, occurrences)))
-      )
-      invIdxCollection.insert(newEntry)
+      log.info(s"insert $word ${oldEntry.isEmpty}")
+      try {
+        invIdxCollection.insert(MongoDBObject(
+          ("_id", word),
+          ("doc_list", List((wiki_id, occurrences)))
+        ))
+      } catch {
+        case e: DuplicateKeyException =>
+          log.warn(s"DuplicateKey $word")
+          val entry = invIdxCollection.findOneByID(word)
+          val newEntry = $push("doc_list" -> (wiki_id, occurrences))
+          invIdxCollection.update(entry.get, newEntry, concern = WriteConcern.Safe)
+        case e: Exception =>
+          log.error("unknown error", e)
+          throw e
+      }
     } else {
+      log.info(s"update $word ${oldEntry.isEmpty}")
       val newEntry = $push("doc_list" -> (wiki_id, occurrences))
-      invIdxCollection.update(oldEntry.get, newEntry)
+      invIdxCollection.update(oldEntry.get, newEntry, concern = WriteConcern.Safe)
     }
   }
-
 }
 
 object WikiInverseIdxCollection {
@@ -50,7 +65,8 @@ object WikiInverseIdxCollection {
     val createInvIdxCollectionFct = () => {
       val mongoClient = MongoClient(
         new ServerAddress(mongoDBPath, mongoDBPort),
-        List(MongoCredential.createCredential(mongoDBUser, mongoDBDatabase, mongoDBPW.toCharArray))
+        List(MongoCredential.createCredential(mongoDBUser, mongoDBDatabase, mongoDBPW.toCharArray)),
+        MongoClientOptions(writeConcern = WriteConcern.Safe)
       )
 
       sys.addShutdownHook {
