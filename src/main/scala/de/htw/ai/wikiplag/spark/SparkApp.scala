@@ -51,7 +51,7 @@ object SparkApp {
     OptionBuilder.withArgName("user")
     options.addOption(OptionBuilder.create("mu"))
 
-    OptionBuilder.withLongOpt("mongodb_pass")
+    OptionBuilder.withLongOpt("mongodb_password")
     OptionBuilder.withDescription("MongoDB Password")
     OptionBuilder.isRequired
     OptionBuilder.hasArgs(1)

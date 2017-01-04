@@ -41,11 +41,11 @@ Options:
  -i, --index                          use db-entries to create an inverse index 
  -n, --ngrams <ngram>                 use db-entries to create hashed n-grams of a provided size 
  -h, --help
- -mh, --mongodb_host <host>            MongoDB Host
- -mp, --mongodb_port <port>            MongoDB Port
- -mu, --mongodb_user <user>            MongoDB User
- -mpw,--mongodb_pass <pass>            MongoDB Password
- -md, --mongodb_user <user>            MongoDB Database
+ -mh, --mongodb_host     <host>       MongoDB Host
+ -mp, --mongodb_port     <port>       MongoDB Port
+ -mu, --mongodb_user     <user>       MongoDB User
+ -mpw,--mongodb_password <password>   MongoDB Password
+ -md, --mongodb_database <database>   MongoDB Database
 ```
 e.g.
 ```bash
