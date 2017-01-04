@@ -27,13 +27,13 @@ object SparkApp {
 
     /* MongoDB Settings */
 
-    OptionBuilder.withLongOpt("mongodb_path")
-    OptionBuilder.withDescription("MongoDB Path")
+    OptionBuilder.withLongOpt("mongodb_host")
+    OptionBuilder.withDescription("MongoDB Host")
     OptionBuilder.isRequired
     OptionBuilder.hasArgs(1)
     OptionBuilder.withType(classOf[String])
-    OptionBuilder.withArgName("path")
-    options.addOption(OptionBuilder.create("m"))
+    OptionBuilder.withArgName("host")
+    options.addOption(OptionBuilder.create("mh"))
 
     OptionBuilder.withLongOpt("mongodb_port")
     OptionBuilder.withDescription("MongoDB Port")
@@ -41,23 +41,31 @@ object SparkApp {
     OptionBuilder.hasArgs(1)
     OptionBuilder.withType(classOf[Number])
     OptionBuilder.withArgName("port")
-    options.addOption(OptionBuilder.create("p"))
+    options.addOption(OptionBuilder.create("mp"))
 
     OptionBuilder.withLongOpt("mongodb_user")
-    OptionBuilder.withDescription("MongoDB user")
+    OptionBuilder.withDescription("MongoDB User")
     OptionBuilder.isRequired
     OptionBuilder.hasArgs(1)
     OptionBuilder.withType(classOf[String])
     OptionBuilder.withArgName("user")
-    options.addOption(OptionBuilder.create("u"))
+    options.addOption(OptionBuilder.create("mu"))
 
     OptionBuilder.withLongOpt("mongodb_pass")
     OptionBuilder.withDescription("MongoDB Password")
     OptionBuilder.isRequired
     OptionBuilder.hasArgs(1)
     OptionBuilder.withType(classOf[String])
-    OptionBuilder.withArgName("pass")
-    options.addOption(OptionBuilder.create("pw"))
+    OptionBuilder.withArgName("password")
+    options.addOption(OptionBuilder.create("mpw"))
+
+    OptionBuilder.withLongOpt("mongodb_database")
+    OptionBuilder.withDescription("MongoDB Database")
+    OptionBuilder.isRequired
+    OptionBuilder.hasArgs(1)
+    OptionBuilder.withType(classOf[String])
+    OptionBuilder.withArgName("database")
+    options.addOption(OptionBuilder.create("md"))
 
     /* Commands */
 
@@ -96,6 +104,7 @@ object SparkApp {
       val mongoDBPort = commandLine.getParsedOptionValue("mongodb_port").asInstanceOf[Number].intValue()
       val mongoDBUser = commandLine.getParsedOptionValue("mongodb_user").asInstanceOf[String]
       val mongoDBPass = commandLine.getParsedOptionValue("mongodb_pass").asInstanceOf[String]
+      val mongoDBDatabase = commandLine.getParsedOptionValue("mongodb_database").asInstanceOf[String]
 
       if (commandLine.hasOption("h")) {
         printHelp(options)
@@ -104,19 +113,19 @@ object SparkApp {
 
       if (commandLine.hasOption("e")) {
         val file = commandLine.getParsedOptionValue("e").asInstanceOf[String]
-        extractText(file, mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass)
+        extractText(file, mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass, mongoDBDatabase)
 
       } else if (commandLine.hasOption("i")) {
-        createInverseIndex(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass)
+        createInverseIndex(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass, mongoDBDatabase)
 
       } else if (commandLine.hasOption("n")) {
         val ngramSize = commandLine.getParsedOptionValue("n").asInstanceOf[Int]
-        buildNGrams(ngramSize, mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass)
+        buildNGrams(ngramSize, mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPass, mongoDBDatabase)
       }
 
     } catch {
       case e: ParseException =>
-        println("Unexpected exception: " + e.getMessage)
+        println("Unexpected ParseException: " + e.getMessage)
         printHelp(options)
       case e: Exception =>
         e.printStackTrace()
@@ -128,7 +137,7 @@ object SparkApp {
    * core functions
    */
 
-  private def extractText(hadoopFile: String, mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
+  private def extractText(hadoopFile: String, mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String, mongoDBDatabase: String) = {
     println("hadoopfile: " + hadoopFile)
     val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
 
@@ -139,7 +148,7 @@ object SparkApp {
       .option("rowTag", "page")
       .load(hadoopFile)
 
-    val wikiClient = sc.broadcast(WikiDocumentCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag"))
+    val wikiClient = sc.broadcast(WikiDocumentCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, mongoDBDatabase))
 
     df
       .filter("ns = 0")
@@ -156,7 +165,7 @@ object SparkApp {
     sc.stop()
   }
 
-  private def buildNGrams(ngramSize: Int, mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
+  private def buildNGrams(ngramSize: Int, mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String, mongoDBDatabase: String) = {
     println(s"Generate N-Grams of size: $ngramSize")
     //    val ngrams = List(5, 7, 10)
     //    val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
@@ -187,7 +196,7 @@ object SparkApp {
     //    sc.stop()
   }
 
-  private def createInverseIndex(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
+  private def createInverseIndex(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String, mongoDBDatabase: String) = {
     println("createInverseIndex")
     val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
 
@@ -208,7 +217,7 @@ object SparkApp {
     val documents = casRdd.map(x => (x._2.get("_id").asInstanceOf[Long], x._2.get("title").toString, x._2.get("text").toString))
     val idTokens = documents.map(x => (x._1, InverseIndexBuilderImpl.buildIndexKeys(x._3)))
     val invIndexEntries = idTokens.map(x => InverseIndexBuilderImpl.buildInverseIndexEntry(x._1, x._2))
-    val idxColl = sc.broadcast(WikiInverseIdxCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag"))
+    val idxColl = sc.broadcast(WikiInverseIdxCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, mongoDBDatabase))
 
     //    InverseIndexBuilderImpl.mergeInverseIndexEntries(invIndexEntries.toLocalIterator.toList)
     //      .foreach(x => {
@@ -221,66 +230,6 @@ object SparkApp {
       })
     })
 
-  }
-
-  private def createInverseIndexCasbah(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
-    println("createInverseIndex")
-    val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
-
-    val sc = new SparkContext(sparkConf)
-    val documentColl = sc.broadcast(WikiDocumentCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag"))
-    val idxColl = WikiInverseIdxCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag")
-
-    val r = sc
-      .parallelize(documentColl.value.iterator().limit(100).toIndexedSeq) // ggf. limit(x)
-      .map(x => {
-      val text = x.get("text").asInstanceOf[String]
-      if (text != null || text.nonEmpty) {
-        val tokens = InverseIndexBuilderImpl.buildIndexKeys(text)
-        if (tokens != null || tokens.nonEmpty) {
-          val id = x.get("_id").asInstanceOf[Long].toInt
-          val idx = InverseIndexBuilderImpl.buildInverseIndexEntry(id, tokens)
-          idx
-        } else {
-          null
-        }
-      } else {
-        null
-      }
-    })
-      .collect()
-      .filter(x => x != null)
-      .toList
-
-    InverseIndexBuilderImpl.mergeInverseIndexEntries(r)
-      .foreach(x => {
-        idxColl.insertInverseIndex(x._1, x._2)
-      })
-  }
-
-  private def createInverseIndexCasbah2(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String) = {
-    println("createInverseIndex 2, insert per document")
-    val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
-
-    val sc = new SparkContext(sparkConf)
-    val documentColl = sc.broadcast(WikiDocumentCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag"))
-    val idxColl = sc.broadcast(WikiInverseIdxCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, "wikiplag"))
-
-    val r = sc
-      .parallelize(documentColl.value.iterator().toIndexedSeq)
-      .foreach(x => {
-        val text = x.get("text").asInstanceOf[String]
-        if (text != null || text.nonEmpty) {
-          val tokens = InverseIndexBuilderImpl.buildIndexKeys(text)
-          if (tokens != null || tokens.nonEmpty) {
-            val id = x.get("_id").asInstanceOf[Long].toInt
-            val idx = InverseIndexBuilderImpl.buildInverseIndexEntry(id, tokens)
-            idx.foreach(x => {
-              idxColl.value.upsertInverseIndex(x._1, id, x._2._2)
-            })
-          }
-        }
-      })
   }
 
 }

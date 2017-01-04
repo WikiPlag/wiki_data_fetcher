@@ -3,6 +3,8 @@
 * fetches Wikipedia documents ([download](https://dumps.wikimedia.org/dewiki/))
 * prepares the data
 * stores it into the database
+* create an inverse index 
+* create hashed n-grams of a provided size
 
 ## Get XML Dump
 ```bash
@@ -37,16 +39,17 @@ $OPTIONS are:
 Options:
  -e, --extract <hadoop_file>          parse wiki XML file and saves it 
  -i, --index                          use db-entries to create an inverse index 
- -n, --ngrams <ngram>                 use db-entries to create hashed n-grams of a given size 
+ -n, --ngrams <ngram>                 use db-entries to create hashed n-grams of a provided size 
  -h, --help
- -m, --mongodb_path <path>            MongoDB Path
- -p, --mongodb_port <port>            MongoDB Port
- -pw,--mongodb_pass <pass>            MongoDB Password
- -u, --mongodb_user <user>            MongoDB User
+ -mh, --mongodb_host <host>            MongoDB Host
+ -mp, --mongodb_port <port>            MongoDB Port
+ -mu, --mongodb_user <user>            MongoDB User
+ -mpw,--mongodb_pass <pass>            MongoDB Password
+ -md, --mongodb_user <user>            MongoDB Database
 ```
 e.g.
 ```bash
-wiki_data_fetcher.jar -e $HADOOP_PATH/wiki.xml -m mongoPath -p mongoPort -u mongoUser -pw mongoPassword
+wiki_data_fetcher.jar -e $HADOOP_PATH/wiki.xml -mh mongoHost -mp mongoPort -mu mongoUser -mpw mongoPassword -md mondoDatabase
 ```
 
 ## Spark Logs
