@@ -11,20 +11,22 @@ import org.scalatest.{BeforeAndAfterAll, FunSuite}
   */
 @RunWith(classOf[JUnitRunner])
 class WikiInverseIdxCollectionTest extends FunSuite with BeforeAndAfterAll {
+  var mongoClient : MongoClient = _
   var mongoCollection: MongoCollection = _
   var idxColl: WikiInverseIdxCollection = _
 
   override protected def beforeAll(): Unit = {
     val config = new Configurations().properties("mongo.properties")
 
-    val host = config.getString("database.host")
-    val port = config.getInt("database.port")
-    val username = config.getString("database.user")
-    val password = config.getString("database.password")
-    val database = config.getString("database.database")
-    val testCollection = config.getString("database.collection")
+    val host = config.getString("mongo.host")
+    val port = config.getInt("mongo.port")
+    val username = config.getString("mongo.user")
+    val password = config.getString("mongo.password")
+    val database = config.getString("mongo.database")
+    val testCollection = config.getString("mongo.collection")
 
-    mongoCollection = MongoClient(new ServerAddress(host, port), List(MongoCredential.createCredential(username, database, password.toCharArray)))(database)(testCollection)
+    mongoClient = MongoClient(new ServerAddress(host, port), List(MongoCredential.createCredential(username, database, password.toCharArray)))
+    mongoCollection = mongoClient(database)(testCollection)
     mongoCollection.dropCollection()
 
     idxColl = WikiInverseIdxCollection(host, port, username, password, database, testCollection)
@@ -32,6 +34,7 @@ class WikiInverseIdxCollectionTest extends FunSuite with BeforeAndAfterAll {
 
   override protected def afterAll(): Unit = {
     mongoCollection.dropCollection()
+    mongoClient.close()
   }
 
   /*
