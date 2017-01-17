@@ -1,6 +1,5 @@
 package de.htw.ai.wikiplag.spark
 
-import com.mongodb.DuplicateKeyException
 import com.mongodb.casbah.Imports._
 import org.apache.log4j.LogManager
 
@@ -30,35 +29,13 @@ class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) ex
     * @param occurrences List of [occurences]
     */
   def upsertInverseIndex(word: String, wiki_id: Long, occurrences: List[Int]): Unit = {
-    // db.inv_idx.find({ "_id": { $eq: "Ereignisse" }})
-    val oldEntry = invIdxCollection.findOneByID(word)
-    if (oldEntry.isEmpty) {
-      log.info(s"insert $word ${oldEntry.isEmpty}")
-      try {
-        invIdxCollection.insert(MongoDBObject(
-          ("_id", word),
-          ("doc_list", List((wiki_id, occurrences)))
-        ))
-      } catch {
-        case e: DuplicateKeyException =>
-          log.warn(s"DuplicateKey $word")
-          val entry = invIdxCollection.findOneByID(word)
-          val newEntry = $push("doc_list" -> (wiki_id, occurrences))
-          invIdxCollection.update(entry.get, newEntry, concern = WriteConcern.Safe)
-        case e: Exception =>
-          log.error("unknown error", e)
-          throw e
-      }
-    } else {
-      log.info(s"update $word ${oldEntry.isEmpty}")
-      val newEntry = $push("doc_list" -> (wiki_id, occurrences))
-      invIdxCollection.update(oldEntry.get, newEntry, concern = WriteConcern.Safe)
-    }
+    val query = $addToSet("doc_list" -> (wiki_id, occurrences))
+    invIdxCollection.update(MongoDBObject("_id" -> word), query, upsert = true, multi = false, concern = WriteConcern.Safe)
   }
 }
 
 object WikiInverseIdxCollection {
-  val WikiInverseIndexDefaultCollectionName = "inv_idx"
+  val WikiInverseIndexDefaultCollectionName = "inv_idx_test"
 
   def apply(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String, mongoDBDatabase: String, mongoCollectionName: String = WikiInverseIndexDefaultCollectionName): WikiInverseIdxCollection = {
 
