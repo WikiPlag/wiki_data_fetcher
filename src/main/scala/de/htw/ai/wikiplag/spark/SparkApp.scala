@@ -103,7 +103,7 @@ object SparkApp {
       val mongoDBPath = commandLine.getParsedOptionValue("mongodb_host").asInstanceOf[String]
       val mongoDBPort = commandLine.getParsedOptionValue("mongodb_port").asInstanceOf[Number].intValue()
       val mongoDBUser = commandLine.getParsedOptionValue("mongodb_user").asInstanceOf[String]
-      val mongoDBPass = commandLine.getParsedOptionValue("mongodb_pass").asInstanceOf[String]
+      val mongoDBPass = commandLine.getParsedOptionValue("mongodb_password").asInstanceOf[String]
       val mongoDBDatabase = commandLine.getParsedOptionValue("mongodb_database").asInstanceOf[String]
 
       if (commandLine.hasOption("h")) {
