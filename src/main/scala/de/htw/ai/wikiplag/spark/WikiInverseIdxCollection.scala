@@ -35,7 +35,7 @@ class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) ex
 }
 
 object WikiInverseIdxCollection {
-  val WikiInverseIndexDefaultCollectionName = "inv_idx_test"
+  val WikiInverseIndexDefaultCollectionName = "inv_idx"
 
   def apply(mongoDBPath: String, mongoDBPort: Int, mongoDBUser: String, mongoDBPW: String, mongoDBDatabase: String, mongoCollectionName: String = WikiInverseIndexDefaultCollectionName): WikiInverseIdxCollection = {
 
