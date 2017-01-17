@@ -100,7 +100,7 @@ object SparkApp {
 
     try {
       val commandLine = new GnuParser().parse(options, args)
-      val mongoDBPath = commandLine.getParsedOptionValue("mongodb_path").asInstanceOf[String]
+      val mongoDBPath = commandLine.getParsedOptionValue("mongodb_host").asInstanceOf[String]
       val mongoDBPort = commandLine.getParsedOptionValue("mongodb_port").asInstanceOf[Number].intValue()
       val mongoDBUser = commandLine.getParsedOptionValue("mongodb_user").asInstanceOf[String]
       val mongoDBPass = commandLine.getParsedOptionValue("mongodb_pass").asInstanceOf[String]
