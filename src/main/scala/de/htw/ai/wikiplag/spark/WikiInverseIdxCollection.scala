@@ -30,7 +30,7 @@ class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) ex
     */
   def upsertInverseIndex(word: String, wiki_id: Long, occurrences: List[Int]): Unit = {
     val query = $addToSet("doc_list" -> (wiki_id, occurrences))
-    invIdxCollection.update(MongoDBObject("_id" -> word), query, upsert = true, multi = false, concern = WriteConcern.Safe)
+    invIdxCollection.update(MongoDBObject("_id" -> word.toLowerCase()), query, upsert = true, multi = false, concern = WriteConcern.Safe)
   }
 }
 
