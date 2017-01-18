@@ -9,19 +9,6 @@ class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) ex
   private lazy val log = LogManager.getRootLogger
 
   /**
-    * insert a new token with all occurrences
-    *
-    * @param word    Token, e.g. house, wikipedia, ...
-    * @param doclist List of [(wiki_id, List(occurrences))]
-    */
-  def insertInverseIndex(word: String, doclist: List[(Long, List[Int])]): Unit = {
-    invIdxCollection.insert(MongoDBObject(
-      ("_id", word),
-      ("doc_list", doclist)
-    ))
-  }
-
-  /**
     * insert or update an entry (via id)
     *
     * @param word        Token, e.g. house, wikipedia, ...
