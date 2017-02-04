@@ -1,5 +1,6 @@
 package de.htw.ai.wikiplag.spark
 
+import com.mongodb.WriteResult
 import com.mongodb.casbah.Imports._
 import org.apache.log4j.LogManager
 
@@ -7,19 +8,6 @@ class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) ex
   private lazy val invIdxCollection = createInvIdxCollection()
   // use at least info-lvl, cause of our root htw-settings
   private lazy val log = LogManager.getRootLogger
-
-  /**
-    * insert a new token with all occurrences
-    *
-    * @param word    Token, e.g. house, wikipedia, ...
-    * @param doclist List of [(wiki_id, List(occurrences))]
-    */
-  def insertInverseIndex(word: String, doclist: List[(Long, List[Int])]): Unit = {
-    invIdxCollection.insert(MongoDBObject(
-      ("_id", word),
-      ("doc_list", doclist)
-    ))
-  }
 
   /**
     * insert or update an entry (via id)
@@ -30,7 +18,10 @@ class WikiInverseIdxCollection(createInvIdxCollection: () => MongoCollection) ex
     */
   def upsertInverseIndex(word: String, wiki_id: Long, occurrences: List[Int]): Unit = {
     val query = $addToSet("doc_list" -> (wiki_id, occurrences))
-    invIdxCollection.update(MongoDBObject("_id" -> word), query, upsert = true, multi = false, concern = WriteConcern.Safe)
+    val result = invIdxCollection.update(MongoDBObject("_id" -> word.toLowerCase()), query, upsert = true, multi = false, concern = WriteConcern.Safe)
+    if(!result.wasAcknowledged()){
+      print("result was not acknoledged " + result)
+    }
   }
 }
 

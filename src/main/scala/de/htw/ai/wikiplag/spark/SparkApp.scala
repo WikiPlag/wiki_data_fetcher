@@ -1,5 +1,11 @@
 package de.htw.ai.wikiplag.spark
 
+import java.util.Locale
+
+import com.mongodb.{BasicDBList, BasicDBObject}
+import com.mongodb.casbah.Imports.$addToSet
+import com.mongodb.hadoop.MongoOutputFormat
+import com.mongodb.hadoop.io.MongoUpdateWritable
 import de.htw.ai.wikiplag.data.InverseIndexBuilderImpl
 import de.htw.ai.wikiplag.parser.WikiDumpParser
 import de.htw.ai.wikiplag.viewindex.ViewIndexBuilderImp
@@ -7,6 +13,7 @@ import org.apache.commons.cli._
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
+import org.bson.{BsonArray, BsonInt32, BsonInt64}
 
 /**
   * Created by Max M on 11.06.2016.
@@ -201,35 +208,60 @@ object SparkApp {
     val sparkConf = new SparkConf().setAppName("WikiPlagSparkApp")
 
     val sc = new SparkContext(sparkConf)
-    val uri = "mongodb://" + mongoDBPath + ":" + mongoDBPort + "/wikiplag.documents"
+    val uri = "mongodb://" + mongoDBPath + ":" + mongoDBPort + "/wikiplag."
     val authUri = "mongodb://" + mongoDBUser + ":" + mongoDBPW + "@" + mongoDBPath + ":" + mongoDBPort + "/wikiplag"
     // set up parameters for reading from MongoDB via Hadoop input format
-    val config = new Configuration()
-    config.set("mongo.input.uri", uri)
-    config.set("mongo.auth.uri", authUri)
+    val inputConfig = new Configuration()
+    inputConfig.set("mongo.input.uri", uri + "documents")
+    inputConfig.set("mongo.auth.uri", authUri)
 
-    // read the 1-minute bars from MongoDB into Spark RDD format
-    val casRdd = sc.newAPIHadoopRDD(config,
+    val inputRdd = sc.newAPIHadoopRDD(inputConfig,
       classOf[com.mongodb.hadoop.MongoInputFormat],
       classOf[Object],
       classOf[org.bson.BSONObject])
 
-    val documents = casRdd.map(x => (x._2.get("_id").asInstanceOf[Long], x._2.get("title").toString, x._2.get("text").toString))
-    val idTokens = documents.map(x => (x._1, InverseIndexBuilderImpl.buildIndexKeys(x._3)))
-    val invIndexEntries = idTokens.map(x => InverseIndexBuilderImpl.buildInverseIndexEntry(x._1, x._2))
+    val documents = inputRdd.mapValues(x => x.get("text").toString)
+    val idTokens = documents.mapValues(x => InverseIndexBuilderImpl.buildIndexKeys(x))
+    val invIndexEntries = idTokens.map(x => InverseIndexBuilderImpl.buildInverseIndexEntry(x._1.asInstanceOf[Long], x._2))
     val idxColl = sc.broadcast(WikiInverseIdxCollection(mongoDBPath, mongoDBPort, mongoDBUser, mongoDBPW, mongoDBDatabase))
 
-    //    InverseIndexBuilderImpl.mergeInverseIndexEntries(invIndexEntries.toLocalIterator.toList)
-    //      .foreach(x => {
-    //        idxColl.value.insertInverseIndex(x._1, x._2)
-    //      })
+    val updates = invIndexEntries.flatMap(
+      x => x.map(y => (y._1, {
+        val entries = new BasicDBList()
+        y._2._2.foreach(x => entries.add(Int.box(x)))
 
-    invIndexEntries.foreach(x => {
-      x.foreach(y => {
-        idxColl.value.upsertInverseIndex(y._1, y._2._1, y._2._2)
+        val docList = new BasicDBList()
+        docList.add(Long.box(y._2._1))
+        docList.add(entries)
+
+        new MongoUpdateWritable(new BasicDBObject("_id", y._1.toLowerCase(Locale.ROOT)), // Query
+          new BasicDBObject("$addToSet", new BasicDBObject("doc_list", docList)), // Update operation
+          true, // Upsert
+          false // Update multiple documents
+        )
       })
-    })
+      )
+    )
 
+    //invIndexEntries.foreach(x => {
+    //  x.foreach(y => {
+    //    idxColl.value.upsertInverseIndex(y._1, y._2._1, y._2._2)
+    //  })
+    //})
+
+    // Create a separate Configuration for saving data back to MongoDB.
+    val outputConfig = new Configuration()
+    outputConfig.set("mongo.output.uri", uri + "inv_idx_3")
+    outputConfig.set("mongo.auth.uri", authUri)
+
+    // Now we call saveAsNewAPIHadoopFile, using MongoUpdateWritable as the
+    // value class.
+    updates.saveAsNewAPIHadoopFile(
+      "file:///this-is-completely-unused",
+      classOf[Object],
+      classOf[MongoUpdateWritable],
+      classOf[MongoOutputFormat[Object, MongoUpdateWritable]],
+      outputConfig)
   }
 
 }

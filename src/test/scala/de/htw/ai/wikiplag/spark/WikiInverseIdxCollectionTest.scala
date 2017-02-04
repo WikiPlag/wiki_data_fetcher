@@ -42,9 +42,9 @@ class WikiInverseIdxCollectionTest extends FunSuite with BeforeAndAfterAll {
    */
 
   test("checkInsertingFormatAndTypes") {
-    idxColl.upsertInverseIndex("MenschMeier", 123400, List(1, 2, 3, 4))
+    idxColl.upsertInverseIndex("menschmeier", 123400, List(1, 2, 3, 4))
 
-    val entry = mongoCollection.findOneByID("MenschMeier")
+    val entry = mongoCollection.findOneByID("menschmeier")
     assert(entry.isDefined)
     assert(entry.get.containsField("_id"))
     assert(entry.get.containsField("doc_list"))
@@ -58,15 +58,15 @@ class WikiInverseIdxCollectionTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("upsertWithDiffententKeys") {
-    idxColl.upsertInverseIndex("Gleichung", 123401, List())
-    idxColl.upsertInverseIndex("Artikel", 123402, List.range(0, 2000, 1))
+    idxColl.upsertInverseIndex("gleichung", 123401, List())
+    idxColl.upsertInverseIndex("artikel", 123402, List.range(0, 2000, 1))
 
-    val query = "_id" $in List("Gleichung", "Artikel")
+    val query = "_id" $in List("gleichung", "artikel")
     val documentCount = mongoCollection.find(query).count()
     assert(2 == documentCount, "inserting 2 article with diffenrent '_id's should result in 2 entries")
 
     // test 'Gleichung'
-    var entry = mongoCollection.findOneByID("Gleichung")
+    var entry = mongoCollection.findOneByID("gleichung")
     assert(entry.isDefined)
     assert(entry.get.containsField("_id"))
     assert(entry.get.containsField("doc_list"))
@@ -79,7 +79,7 @@ class WikiInverseIdxCollectionTest extends FunSuite with BeforeAndAfterAll {
     assert(firstWikiEntry.get(1).asInstanceOf[BasicDBList].size() == 0)
 
     // test 'Artikel'
-    entry = mongoCollection.findOneByID("Artikel")
+    entry = mongoCollection.findOneByID("artikel")
     assert(entry.isDefined)
     assert(entry.get.containsField("_id"))
     assert(entry.get.containsField("doc_list"))
@@ -93,13 +93,13 @@ class WikiInverseIdxCollectionTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("upsertWithSameKey") {
-    idxColl.upsertInverseIndex("Testwort", 123403, List(1, 2, 3, 4))
-    idxColl.upsertInverseIndex("Testwort", 123404, List(1, 2, 3))
+    idxColl.upsertInverseIndex("testwort", 123403, List(1, 2, 3, 4))
+    idxColl.upsertInverseIndex("testwort", 123404, List(1, 2, 3))
 
-    val query = MongoDBObject("_id" -> "Testwort")
+    val query = MongoDBObject("_id" -> "testwort")
     assert(1 == mongoCollection.find(query).count(), "inserting 2 article with the same '_id' should result in a merged doc_list entries")
 
-    var entry = mongoCollection.findOneByID("Testwort")
+    var entry = mongoCollection.findOneByID("testwort")
     assert(entry.isDefined)
     assert(entry.get.containsField("_id"))
     assert(entry.get.containsField("doc_list"))
@@ -117,9 +117,9 @@ class WikiInverseIdxCollectionTest extends FunSuite with BeforeAndAfterAll {
 
     // a third entry
 
-    idxColl.upsertInverseIndex("Testwort", 123405, List(10, 11))
+    idxColl.upsertInverseIndex("testwort", 123405, List(10, 11))
 
-    entry = mongoCollection.findOneByID("Testwort")
+    entry = mongoCollection.findOneByID("testwort")
     assert(entry.isDefined)
     assert(entry.get.containsField("_id"))
     assert(entry.get.containsField("doc_list"))
